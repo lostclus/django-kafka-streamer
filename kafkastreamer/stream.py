@@ -108,8 +108,8 @@ class Streamer:
     batch_class = Batch
     refresh_finalize_type = "enumerate"
     batch_size = None
-    message_serializer = flat_json_message_serializer
-    partition_key_serializer = object_id_key_serializer
+    message_serializer = None
+    partition_key_serializer = None
     id_field = "id"
     enumerate_ids_field = "ids"
     enumerate_chunk_field = "chunk"
@@ -126,6 +126,10 @@ class Streamer:
         self.batch_size = self.batch_size or getattr(
             settings, "KAFKASTREAMER_BATCH_SIZE", 500
         )
+        if self.message_serializer is None:
+            self.message_serializer = flat_json_message_serializer
+        if self.partition_key_serializer is None:
+            self.partition_key_serializer = object_id_key_serializer
 
     def get_data_for_object(self, obj, batch):
         """

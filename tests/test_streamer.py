@@ -443,3 +443,28 @@ def test_send_objects(producer_m):
             ),
         ),
     ]
+
+
+def test_serializers_works():
+    streamer = ModelAStreamer()
+
+    msg = Message(
+        meta=MessageMeta(
+            timestamp=datetime.datetime(2023, 1, 1, 0, 0, 0),
+            msg_type=TYPE_CREATE,
+            context=MessageContext(
+                source="test",
+                user_id=None,
+                extra=None,
+            ),
+        ),
+        obj_id=1,
+        data={
+            "id": 1,
+        },
+    )
+
+    key_bytes = streamer.partition_key_serializer(msg)
+    assert type(key_bytes) is bytes
+    msg_bytes = streamer.message_serializer(msg)
+    assert type(msg_bytes) is bytes
