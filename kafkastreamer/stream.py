@@ -3,7 +3,6 @@ import uuid
 from collections import namedtuple
 
 import kafka
-from django.conf import settings
 from django.core.exceptions import FieldError, ImproperlyConfigured, ObjectDoesNotExist
 from django.db import models
 from django.db.models.query import QuerySet
@@ -21,6 +20,7 @@ from .constants import (
 from .context import _add_to_squash, _context
 from .registry import get_registry, get_streamer
 from .serializers import flat_json_message_serializer, object_id_key_serializer
+from .settings import get_setting
 
 log = logging.getLogger(__name__)
 
@@ -123,9 +123,7 @@ class Streamer:
                 setattr(self, key, value)
         if not self.topic:
             raise ImproperlyConfigured("No streamer topic specified")
-        self.batch_size = self.batch_size or getattr(
-            settings, "KAFKASTREAMER_BATCH_SIZE", 500
-        )
+        self.batch_size = self.batch_size or get_setting("BATCH_SIZE")
         if self.message_serializer is None:
             self.message_serializer = flat_json_message_serializer
         if self.partition_key_serializer is None:
@@ -300,9 +298,7 @@ class Streamer:
         """
         Returns context information fields
         """
-        source = getattr(_context, "source", None) or getattr(
-            settings, "KAFKASTREAMER_DEFAULT_SOURCE", None
-        )
+        source = getattr(_context, "source", None) or get_setting("DEFAULT_SOURCE")
         user = getattr(_context, "user", None)
         if user is not None and user.is_authenticated():
             user_id = user.pk
@@ -420,7 +416,7 @@ class Streamer:
         return messages
 
     def get_producer_options(self):
-        return getattr(settings, "KAFKASTREAMER_PRODUCER_OPTIONS", {})
+        return get_setting("PRODUCER_OPTIONS")
 
     def get_producer(self, **kwargs):
         """
@@ -429,6 +425,7 @@ class Streamer:
         options = {
             "value_serializer": self.message_serializer,
             "key_serializer": self.partition_key_serializer,
+            "bootstrap_servers": get_setting("BOOTSTRAP_SERVERS"),
             **self.get_producer_options(),
             **kwargs,
         }
@@ -463,7 +460,7 @@ class Streamer:
         messages_send_count = 0
         try:
             for msg in messages:
-                producer.send(self.topic, msg)
+                producer.send(self.topic, msg, key=msg.obj_id)
                 messages_send_count += 1
                 if batch_size and messages_send_count % batch_size == 0:
                     producer.flush()

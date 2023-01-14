@@ -1,5 +1,6 @@
 from unittest import mock
 
+from django.conf import settings
 from django.test.utils import override_settings
 
 from kafkastreamer import set_context, squash, stop_handlers
@@ -8,14 +9,19 @@ from tests.testapp.streamers import ModelAStreamer
 from tests.utils import patch_producer
 
 
-@override_settings(KAFKASTREAMER_DEFAULT_SOURCE="default-source")
+@override_settings(
+    KAFKA_STREAMER={
+        **settings.KAFKA_STREAMER,
+        "DEFAULT_SOURCE": "default-source",
+    },
+)
 def test_set_context_source():
     streamer = ModelAStreamer()
 
-    streamer.get_context_info().source == "default-source"
+    assert streamer.get_context_info().source == "default-source"
     with set_context(source="custom-source"):
-        streamer.get_context_info().source == "custom-source"
-    streamer.get_context_info().source == "default-source"
+        assert streamer.get_context_info().source == "custom-source"
+    assert streamer.get_context_info().source == "default-source"
 
 
 def test_set_context_user():

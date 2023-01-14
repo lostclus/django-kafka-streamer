@@ -38,6 +38,7 @@ def test_create(producer_m):
                     "field2": "a",
                 },
             ),
+            key=obj.pk,
         ),
     ]
 
@@ -77,6 +78,7 @@ def test_update(producer_m):
                     "field2": "a",
                 },
             ),
+            key=obj.pk,
         ),
     ]
 
@@ -116,5 +118,6 @@ def test_delete(producer_m):
                     "field2": "a",
                 },
             ),
+            key=obj_id,
         ),
     ]

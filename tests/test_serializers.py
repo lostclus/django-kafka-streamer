@@ -59,6 +59,8 @@ def test_flat_json_message_serializer(message):
     }
 
 
-def test_object_id_key_serializer(message):
-    key_bytes = object_id_key_serializer(message)
+def test_object_id_key_serializer():
+    key_bytes = object_id_key_serializer(1)
     assert key_bytes == b"1"
+    key_bytes = object_id_key_serializer(None)
+    assert key_bytes == b"0"

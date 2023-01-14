@@ -3,7 +3,9 @@ from pytest_djangoapp import configure_djangoapp_plugin
 pytest_plugins = configure_djangoapp_plugin(
     app_name="kafkastreamer",
     settings={
-        "KAFKASTREAMER_DEFAULT_SOURCE": "test",
+        "KAFKA_STREAMER": {
+            "DEFAULT_SOURCE": "test",
+        },
     },
     extend_INSTALLED_APPS=[
         "tests.testapp",

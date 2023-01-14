@@ -38,5 +38,5 @@ def flat_json_message_serializer(
     )
 
 
-def object_id_key_serializer(msg, encoding=DEFAULT_ENCODING):
-    return bytes(str(msg.obj_id or 0), encoding)
+def object_id_key_serializer(obj_id, encoding=DEFAULT_ENCODING):
+    return bytes(str(obj_id or 0), encoding)

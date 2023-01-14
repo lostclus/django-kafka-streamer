@@ -421,6 +421,7 @@ def test_send_objects(producer_m):
                     "field2": "a",
                 },
             ),
+            key=obj1.pk,
         ),
         mock.call(
             "model-a",
@@ -441,6 +442,7 @@ def test_send_objects(producer_m):
                     "field2": "b",
                 },
             ),
+            key=obj2.pk,
         ),
     ]
 
@@ -464,7 +466,7 @@ def test_serializers_works():
         },
     )
 
-    key_bytes = streamer.partition_key_serializer(msg)
+    key_bytes = streamer.partition_key_serializer(msg.obj_id)
     assert type(key_bytes) is bytes
     msg_bytes = streamer.message_serializer(msg)
     assert type(msg_bytes) is bytes
