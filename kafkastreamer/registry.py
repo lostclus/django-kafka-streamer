@@ -26,9 +26,10 @@ def _make_registry_key(model, rel_name=None):
     )
 
 
-def register(model, streamer_class, set_handlers=True, **kwargs):
+def register(model, streamer_class=None, set_handlers=True, **kwargs):
     """
-    Registers Django model using given streamer class
+    Registers Django model using given streamer class. May be used as plain
+    function call or as decorator on streamer class.
     """
     from .handlers import (
         handle_m2m_changed,
@@ -36,6 +37,14 @@ def register(model, streamer_class, set_handlers=True, **kwargs):
         handle_post_save,
         handle_pre_delete,
     )
+
+    def wrapper(cls):
+        register(model, cls)
+        return cls
+
+    if streamer_class is None:
+        # Called as class decorator
+        return wrapper
 
     streamer = streamer_class(**kwargs)
     _registry[_make_registry_key(model)] = streamer
