@@ -35,7 +35,7 @@ def flat_json_message_serializer(
 
     return json.dumps(
         item,
-        cls=DjangoJSONEncoder,
+        cls=cls,
         ensure_ascii=ensure_ascii,
     ).encode(
         encoding,
