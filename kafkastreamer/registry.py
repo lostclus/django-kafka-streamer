@@ -2,6 +2,7 @@ import collections
 from importlib import import_module
 
 from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.db.models.fields.related_descriptors import (
     ForwardManyToOneDescriptor,
@@ -87,6 +88,10 @@ def register(model, streamer_class=None, set_handlers=True, **kwargs):
 
         for rel_model, rev_name, set_delete_handler in rel_model_and_attr:
             if rev_name:
+                if rev_name == "+":
+                    raise ImproperlyConfigured(
+                        f"No backward reference field from {rel_model} to {model}."
+                    )
                 _registry[_make_registry_key(rel_model, rev_name)] = streamer
 
                 if set_handlers:
