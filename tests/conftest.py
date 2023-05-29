@@ -5,6 +5,7 @@ pytest_plugins = configure_djangoapp_plugin(
     settings={
         "KAFKA_STREAMER": {
             "DEFAULT_SOURCE": "test",
+            "BOOTSTRAP_SERVERS": [],
         },
     },
     extend_INSTALLED_APPS=[

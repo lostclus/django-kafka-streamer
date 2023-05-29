@@ -430,7 +430,11 @@ class Streamer:
             **kwargs,
         }
 
-        if not options.get("bootstrap_servers"):
+        if options.get("bootstrap_servers") is None:
+            raise ImproperlyConfigured(
+                "The `KAFKA_STREAMER['BOOTSTRAP_SERVERS']` is not configured."
+            )
+        if options["bootstrap_servers"] == []:
             return None
 
         try:
