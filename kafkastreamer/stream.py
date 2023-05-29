@@ -19,7 +19,6 @@ from .constants import (
 )
 from .context import _add_to_squash, _context
 from .registry import get_registry, get_streamer
-from .serializers import flat_json_message_serializer, object_id_key_serializer
 from .settings import get_setting
 
 log = logging.getLogger(__name__)
@@ -125,9 +124,13 @@ class Streamer:
             raise ImproperlyConfigured("No streamer topic specified")
         self.batch_size = self.batch_size or get_setting("BATCH_SIZE")
         if self.message_serializer is None:
-            self.message_serializer = flat_json_message_serializer
+            self.message_serializer = get_setting(
+                "DEFAULT_MESSAGE_SERIALIZER", resolve=True
+            )
         if self.partition_key_serializer is None:
-            self.partition_key_serializer = object_id_key_serializer
+            self.partition_key_serializer = get_setting(
+                "DEFAULT_PARTITION_KEY_SERIALIZER", resolve=True
+            )
 
     def get_data_for_object(self, obj, batch):
         """
