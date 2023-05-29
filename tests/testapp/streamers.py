@@ -2,13 +2,12 @@ from kafkastreamer import Streamer, register
 from tests.testapp.models import ModelA, ModelB, ModelC
 
 
+@register(ModelA)
 class ModelAStreamer(Streamer):
     topic = "model-a"
 
 
-register(ModelA, ModelAStreamer)
-
-
+@register(ModelB)
 class ModelBStreamer(Streamer):
     topic = "model-b"
     include = ["z"]
@@ -20,13 +19,11 @@ class ModelBStreamer(Streamer):
         return {"e": "extra"}
 
 
-register(ModelB, ModelBStreamer)
-
-
 class ModelCStreamer(Streamer):
     topic = "model-c"
     include = ["a", "b"]
     select_related = ["a", "b"]
 
 
+# use register as plain function call
 register(ModelC, ModelCStreamer)

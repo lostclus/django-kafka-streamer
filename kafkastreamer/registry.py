@@ -2,6 +2,7 @@ import collections
 from importlib import import_module
 
 from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.db.models.fields.related_descriptors import (
     ForwardManyToOneDescriptor,
@@ -26,9 +27,10 @@ def _make_registry_key(model, rel_name=None):
     )
 
 
-def register(model, streamer_class, set_handlers=True, **kwargs):
+def register(model, streamer_class=None, set_handlers=True, **kwargs):
     """
-    Registers Django model using given streamer class
+    Registers Django model using given streamer class. May be used as plain
+    function call or as decorator on streamer class.
     """
     from .handlers import (
         handle_m2m_changed,
@@ -36,6 +38,14 @@ def register(model, streamer_class, set_handlers=True, **kwargs):
         handle_post_save,
         handle_pre_delete,
     )
+
+    def wrapper(cls):
+        register(model, cls)
+        return cls
+
+    if streamer_class is None:
+        # Called as class decorator
+        return wrapper
 
     streamer = streamer_class(**kwargs)
     _registry[_make_registry_key(model)] = streamer
@@ -78,6 +88,10 @@ def register(model, streamer_class, set_handlers=True, **kwargs):
 
         for rel_model, rev_name, set_delete_handler in rel_model_and_attr:
             if rev_name:
+                if rev_name == "+":
+                    raise ImproperlyConfigured(
+                        f"No backward reference field from {rel_model} to {model}."
+                    )
                 _registry[_make_registry_key(rel_model, rev_name)] = streamer
 
                 if set_handlers:

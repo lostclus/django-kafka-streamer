@@ -19,7 +19,6 @@ from .constants import (
 )
 from .context import _add_to_squash, _context
 from .registry import get_registry, get_streamer
-from .serializers import flat_json_message_serializer, object_id_key_serializer
 from .settings import get_setting
 
 log = logging.getLogger(__name__)
@@ -68,7 +67,6 @@ class Batch:
         prefetch_related=None,
         **kwargs
     ):
-
         self.objects = objects
         self.queryset = queryset
         self.manager = manager
@@ -77,7 +75,6 @@ class Batch:
         self.prefetch_related = prefetch_related
 
     def get_objects(self):
-
         queryset = self.queryset
         if queryset is None and self.manager is not None:
             queryset = self.manager.all()
@@ -125,9 +122,13 @@ class Streamer:
             raise ImproperlyConfigured("No streamer topic specified")
         self.batch_size = self.batch_size or get_setting("BATCH_SIZE")
         if self.message_serializer is None:
-            self.message_serializer = flat_json_message_serializer
+            self.message_serializer = get_setting(
+                "DEFAULT_MESSAGE_SERIALIZER", resolve=True
+            )
         if self.partition_key_serializer is None:
-            self.partition_key_serializer = object_id_key_serializer
+            self.partition_key_serializer = get_setting(
+                "DEFAULT_PARTITION_KEY_SERIALIZER", resolve=True
+            )
 
     def get_data_for_object(self, obj, batch):
         """
@@ -168,7 +169,6 @@ class Streamer:
 
         if self.include:
             for name in self.include:
-
                 method_name = "load_%s" % name
                 func = getattr(self, method_name, None)
                 try:
@@ -430,7 +430,11 @@ class Streamer:
             **kwargs,
         }
 
-        if not options.get("bootstrap_servers"):
+        if options.get("bootstrap_servers") is None:
+            raise ImproperlyConfigured(
+                "The `KAFKA_STREAMER['BOOTSTRAP_SERVERS']` is not configured."
+            )
+        if options["bootstrap_servers"] == []:
             return None
 
         try:
@@ -650,7 +654,6 @@ def full_refresh(model_or_manager=None, producer=None, flush=True):
     """
 
     def _refresh(streamer, manager, producer, flush, timestamp=None):
-
         if timestamp is None:
             timestamp = timezone.now()
 

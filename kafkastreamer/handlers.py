@@ -8,7 +8,6 @@ from .registry import get_streamer, get_streamer_for_related
 
 
 def handle_post_save(sender, instance=None, **kwargs):
-
     stop_handlers = getattr(_context, "stop_handlers", None)
     if stop_handlers is not None:
         if not stop_handlers or sender in stop_handlers:
@@ -32,7 +31,6 @@ def handle_post_save(sender, instance=None, **kwargs):
             streamer.send_messages(messages)
 
     for rel_name, streamer in get_streamer_for_related(sender):
-
         try:
             rel = getattr(instance, rel_name)
         except ObjectDoesNotExist:
@@ -116,6 +114,5 @@ def handle_post_delete(sender, instance=None, **kwargs):
 
 
 def handle_m2m_changed(sender, instance=None, action=None, **kwargs):
-
     if action.startswith("post_"):
         handle_post_save(instance.__class__, instance=instance, **kwargs)

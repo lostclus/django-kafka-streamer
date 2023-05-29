@@ -33,7 +33,11 @@ def flat_json_message_serializer(
     if ensure_id and item.get("id") is None:
         item["id"] = msg.obj_id
 
-    return json.dumps(item, cls=DjangoJSONEncoder, ensure_ascii=ensure_ascii,).encode(
+    return json.dumps(
+        item,
+        cls=cls,
+        ensure_ascii=ensure_ascii,
+    ).encode(
         encoding,
     )
 
