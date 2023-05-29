@@ -67,7 +67,6 @@ class Batch:
         prefetch_related=None,
         **kwargs
     ):
-
         self.objects = objects
         self.queryset = queryset
         self.manager = manager
@@ -76,7 +75,6 @@ class Batch:
         self.prefetch_related = prefetch_related
 
     def get_objects(self):
-
         queryset = self.queryset
         if queryset is None and self.manager is not None:
             queryset = self.manager.all()
@@ -171,7 +169,6 @@ class Streamer:
 
         if self.include:
             for name in self.include:
-
                 method_name = "load_%s" % name
                 func = getattr(self, method_name, None)
                 try:
@@ -653,7 +650,6 @@ def full_refresh(model_or_manager=None, producer=None, flush=True):
     """
 
     def _refresh(streamer, manager, producer, flush, timestamp=None):
-
         if timestamp is None:
             timestamp = timezone.now()
 

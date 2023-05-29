@@ -47,8 +47,7 @@ def squash():
 
     finally:
         if is_top:
-
-            for (model, messages_d) in _context.squash.items():
+            for model, messages_d in _context.squash.items():
                 streamer = get_streamer(model)
                 messages = messages_d.values()
                 streamer.send_messages(messages)
