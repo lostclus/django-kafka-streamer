@@ -54,7 +54,7 @@ def test_send(producer_m, msg_type):
                     "field2": "a",
                 },
             ),
-            key=obj.pk,
+            key=None,
         ),
     ]
 
@@ -98,7 +98,7 @@ def test_full_refresh(producer_m):
                     "field2": "a",
                 },
             ),
-            key=obj1.pk,
+            key=None,
         ),
         mock.call(
             "model-a",
@@ -119,7 +119,7 @@ def test_full_refresh(producer_m):
                     "field2": "b",
                 },
             ),
-            key=obj2.pk,
+            key=None,
         ),
         mock.call(
             "model-a",
@@ -138,6 +138,6 @@ def test_full_refresh(producer_m):
                     "ids": [obj1.pk, obj2.pk],
                 },
             ),
-            key=obj1.pk,
+            key=None,
         ),
     ]

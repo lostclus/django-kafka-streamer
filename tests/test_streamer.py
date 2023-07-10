@@ -1,6 +1,8 @@
 import datetime
 from unittest import mock
 
+import pytest
+
 from kafkastreamer import (
     TYPE_CREATE,
     TYPE_DELETE,
@@ -8,6 +10,7 @@ from kafkastreamer import (
     TYPE_EOS,
     stop_handlers,
 )
+from kafkastreamer.serializers import object_id_key_serializer
 from kafkastreamer.stream import Message, MessageContext, MessageMeta
 from tests.testapp.models import ModelA, ModelB, ModelC
 from tests.testapp.streamers import ModelAStreamer, ModelBStreamer, ModelCStreamer
@@ -17,6 +20,13 @@ from tests.utils import patch_producer
 def test_constructor():
     streamer = ModelAStreamer(batch_size=100)
     assert streamer.batch_size == 100
+
+
+def test_get_id():
+    obj = ModelA.objects.create(field1=1, field2="a")
+    streamer = ModelAStreamer()
+    obj_id = streamer.get_id(obj, batch=None)
+    assert obj_id == obj.pk
 
 
 def test_get_data_for_object():
@@ -383,8 +393,9 @@ def test_get_messages_for_ids_delete():
     ]
 
 
+@pytest.mark.parametrize("partition_key_serializer", [None, object_id_key_serializer])
 @patch_producer()
-def test_send_objects(producer_m):
+def test_send_objects(producer_m, partition_key_serializer):
     producer_send_m = producer_m.return_value.send
     assert len(producer_send_m.mock_calls) == 0
 
@@ -392,7 +403,7 @@ def test_send_objects(producer_m):
         obj1 = ModelA.objects.create(field1=1, field2="a")
         obj2 = ModelA.objects.create(field1=2, field2="b")
 
-    streamer = ModelAStreamer()
+    streamer = ModelAStreamer(partition_key_serializer=partition_key_serializer)
     count = streamer.send_objects(
         ModelA.objects,
         msg_type=TYPE_CREATE,
@@ -401,53 +412,54 @@ def test_send_objects(producer_m):
 
     assert count == 2
 
-    assert producer_send_m.mock_calls == [
-        mock.call(
-            "model-a",
-            Message(
-                meta=MessageMeta(
-                    timestamp=datetime.datetime(2023, 1, 1, 0, 0, 0),
-                    msg_type=TYPE_CREATE,
-                    context=MessageContext(
-                        source="test",
-                        user_id=None,
-                        extra=None,
-                    ),
-                ),
-                obj_id=obj1.pk,
-                data={
-                    "id": obj1.pk,
-                    "field1": 1,
-                    "field2": "a",
-                },
+    msg1 = Message(
+        meta=MessageMeta(
+            timestamp=datetime.datetime(2023, 1, 1, 0, 0, 0),
+            msg_type=TYPE_CREATE,
+            context=MessageContext(
+                source="test",
+                user_id=None,
+                extra=None,
             ),
-            key=obj1.pk,
         ),
-        mock.call(
-            "model-a",
-            Message(
-                meta=MessageMeta(
-                    timestamp=datetime.datetime(2023, 1, 1, 0, 0, 0),
-                    msg_type=TYPE_CREATE,
-                    context=MessageContext(
-                        source="test",
-                        user_id=None,
-                        extra=None,
-                    ),
-                ),
-                obj_id=obj2.pk,
-                data={
-                    "id": obj2.pk,
-                    "field1": 2,
-                    "field2": "b",
-                },
+        obj_id=obj1.pk,
+        data={
+            "id": obj1.pk,
+            "field1": 1,
+            "field2": "a",
+        },
+    )
+    msg2 = Message(
+        meta=MessageMeta(
+            timestamp=datetime.datetime(2023, 1, 1, 0, 0, 0),
+            msg_type=TYPE_CREATE,
+            context=MessageContext(
+                source="test",
+                user_id=None,
+                extra=None,
             ),
-            key=obj2.pk,
         ),
-    ]
+        obj_id=obj2.pk,
+        data={
+            "id": obj2.pk,
+            "field1": 2,
+            "field2": "b",
+        },
+    )
+
+    if partition_key_serializer is None:
+        assert producer_send_m.mock_calls == [
+            mock.call("model-a", msg1, key=None),
+            mock.call("model-a", msg2, key=None),
+        ]
+    else:
+        assert producer_send_m.mock_calls == [
+            mock.call("model-a", msg1, key=msg1),
+            mock.call("model-a", msg2, key=msg2),
+        ]
 
 
-def test_serializers_works():
+def test_message_serializer_works():
     streamer = ModelAStreamer()
 
     msg = Message(
@@ -466,7 +478,5 @@ def test_serializers_works():
         },
     )
 
-    key_bytes = streamer.partition_key_serializer(msg.obj_id)
-    assert type(key_bytes) is bytes
     msg_bytes = streamer.message_serializer(msg)
     assert type(msg_bytes) is bytes

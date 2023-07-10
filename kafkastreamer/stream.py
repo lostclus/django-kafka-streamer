@@ -107,6 +107,7 @@ class Streamer:
     batch_size = None
     message_serializer = None
     partition_key_serializer = None
+    partitioner = None
     id_field = "id"
     enumerate_ids_field = "ids"
     enumerate_chunk_field = "chunk"
@@ -129,6 +130,8 @@ class Streamer:
             self.partition_key_serializer = get_setting(
                 "DEFAULT_PARTITION_KEY_SERIALIZER", resolve=True
             )
+        if self.partitioner is None:
+            self.partitioner = get_setting("DEFAULT_PARTITIONER", resolve=True)
 
     def get_data_for_object(self, obj, batch):
         """
@@ -205,6 +208,9 @@ class Streamer:
 
         return data
 
+    def get_id(self, obj, batch):
+        return obj.pk or getattr(obj, "_kafkastreamer_pre_delete_pk", None)
+
     def get_message(self, obj, batch, msg_type=None, timestamp=None):
         """
         Returns Message tuple for given obj and message type
@@ -224,8 +230,7 @@ class Streamer:
         if extra:
             data.update(extra)
 
-        obj_id = obj.pk or getattr(obj, "_kafkastreamer_pre_delete_pk", None)
-
+        obj_id = self.get_id(obj, batch)
         msg = Message(meta=meta, obj_id=obj_id, data=data)
         return msg
 
@@ -426,6 +431,13 @@ class Streamer:
             "value_serializer": self.message_serializer,
             "key_serializer": self.partition_key_serializer,
             "bootstrap_servers": get_setting("BOOTSTRAP_SERVERS"),
+            **(
+                {
+                    "partitioner": self.partitioner,
+                }
+                if self.partitioner is not None
+                else {}
+            ),
             **self.get_producer_options(),
             **kwargs,
         }
@@ -464,7 +476,11 @@ class Streamer:
         messages_send_count = 0
         try:
             for msg in messages:
-                producer.send(self.topic, msg, key=msg.obj_id)
+                if self.partition_key_serializer is not None:
+                    key = msg
+                else:
+                    key = None
+                producer.send(self.topic, msg, key=key)
                 messages_send_count += 1
                 if batch_size and messages_send_count % batch_size == 0:
                     producer.flush()

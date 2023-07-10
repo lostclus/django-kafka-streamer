@@ -9,9 +9,8 @@ DEFAULTS = {
     "DEFAULT_MESSAGE_SERIALIZER": (
         "kafkastreamer.serializers.flat_json_message_serializer"
     ),
-    "DEFAULT_PARTITION_KEY_SERIALIZER": (
-        "kafkastreamer.serializers.object_id_key_serializer"
-    ),
+    "DEFAULT_PARTITION_KEY_SERIALIZER": None,
+    "DEFAULT_PARTITIONER": None,
 }
 
 
