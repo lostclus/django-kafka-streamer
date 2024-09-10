@@ -22,7 +22,7 @@ from .serializers import flat_json_message_serializer, object_id_key_serializer
 from .squashing import squash
 from .stream import Batch, Streamer
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 __all__ = [
     "admin_site",
