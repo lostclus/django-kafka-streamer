@@ -2,16 +2,18 @@ import json
 
 from django.core.serializers.json import DjangoJSONEncoder
 
+from .types import Message
+
 DEFAULT_ENCODING = "utf-8"
 
 
 def flat_json_message_serializer(
-    msg,
-    cls=DjangoJSONEncoder,
-    ensure_id=True,
-    ensure_ascii=False,
-    encoding=DEFAULT_ENCODING,
-):
+    msg: Message,
+    cls: type[json.JSONEncoder] = DjangoJSONEncoder,
+    ensure_id: bool = True,
+    ensure_ascii: bool = False,
+    encoding: str = DEFAULT_ENCODING,
+) -> bytes:
     meta = msg.meta
     context = meta.context
 
@@ -42,7 +44,7 @@ def flat_json_message_serializer(
     )
 
 
-def object_id_key_serializer(msg, encoding=DEFAULT_ENCODING):
+def object_id_key_serializer(msg: Message, encoding: str = DEFAULT_ENCODING) -> bytes:
     """
     Returns key based on object ID as encoded string of digits.
     """

@@ -1,5 +1,7 @@
+from typing import Any
+
 from django.apps import apps
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandParser
 
 from kafkastreamer import full_refresh, set_context
 from kafkastreamer.tasks import refresh
@@ -8,7 +10,7 @@ from kafkastreamer.tasks import refresh
 class Command(BaseCommand):
     help = "Refresh objects in Kafka stream"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
             "--source",
             default=None,
@@ -31,12 +33,12 @@ class Command(BaseCommand):
 
     def handle(
         self,
-        source=None,
-        models=None,
-        verbosity=None,
-        no_async=False,
-        **options,
-    ):
+        source: str | None = None,
+        models: list[str] | None = None,
+        verbosity: int | None = None,
+        no_async: bool = False,
+        **options: Any,
+    ) -> None:
         if no_async:
             count = 0
             with set_context(source=source):

@@ -1,55 +1,30 @@
 import logging
 import uuid
-from collections import namedtuple
+from collections.abc import Generator, Iterable, Sequence
+from datetime import datetime
+from typing import Any, cast
 
-import kafka
 from django.core.exceptions import FieldError, ImproperlyConfigured, ObjectDoesNotExist
-from django.db import models
+from django.db.models import FileField, Manager, Model
 from django.db.models.query import QuerySet
 from django.utils import timezone
-from kafka.errors import KafkaTimeoutError, NoBrokersAvailable
+from kafka import KafkaProducer  # type: ignore
+from kafka.errors import KafkaTimeoutError, NoBrokersAvailable  # type: ignore
 
-from .constants import (
-    TYPE_CREATE,
-    TYPE_DELETE,
-    TYPE_ENUMERATE,
-    TYPE_EOS,
-    TYPE_REFRESH,
-    TYPE_UPDATE,
-)
-from .context import _add_to_squash, _context
-from .registry import get_registry, get_streamer
+from .constants import TYPE_DELETE, TYPE_ENUMERATE, TYPE_EOS, TYPE_REFRESH
+from .context import _context
 from .settings import get_setting
+from .types import (
+    Message,
+    MessageContext,
+    MessageMeta,
+    MessageSerializer,
+    ObjectID,
+    Partitioner,
+    PartitionKeySerializer,
+)
 
 log = logging.getLogger(__name__)
-
-
-MessageContext = namedtuple(
-    "MessageContext",
-    [
-        "source",  # source of data modification as string
-        "user_id",  # author of data modification as user ID
-        "extra",  # extra context data as dict
-    ],
-)
-
-MessageMeta = namedtuple(
-    "MessageMeta",
-    [
-        "timestamp",  # message time as datetime object
-        "msg_type",  # message type as string
-        "context",  # MessageContext
-    ],
-)
-
-Message = namedtuple(
-    "Message",
-    [
-        "meta",  # MessageMeta
-        "obj_id",  # object ID (primary key)
-        "data",  # message data as dict
-    ],
-)
 
 
 class Batch:
@@ -59,13 +34,13 @@ class Batch:
 
     def __init__(
         self,
-        objects=None,
-        queryset=None,
-        manager=None,
-        objects_ids=None,
-        select_related=None,
-        prefetch_related=None,
-        **kwargs
+        objects: Iterable[Model] | None = None,
+        queryset: QuerySet | None = None,
+        manager: Manager | None = None,
+        objects_ids: Sequence[ObjectID] | None = None,
+        select_related: Sequence[str] | None = None,
+        prefetch_related: Sequence[str] | None = None,
+        **kwargs: Any,
     ):
         self.objects = objects
         self.queryset = queryset
@@ -74,7 +49,19 @@ class Batch:
         self.select_related = select_related
         self.prefetch_related = prefetch_related
 
-    def get_objects(self):
+        assert (
+            self.manager is not None
+            or self.queryset is not None
+            or self.objects is not None
+        )
+
+        self.model: type[Model] | None = None
+        if self.manager is not None:
+            self.model = self.manager.model
+        elif self.queryset is not None:
+            self.model = self.queryset.model
+
+    def get_objects(self) -> QuerySet | Iterable[Model]:
         queryset = self.queryset
         if queryset is None and self.manager is not None:
             queryset = self.manager.all()
@@ -87,7 +74,10 @@ class Batch:
                 queryset = queryset.prefetch_related(*self.prefetch_related)
             return queryset
 
-        return self.objects
+        if self.objects is not None:
+            return self.objects
+
+        raise Exception("Invalid batch")
 
 
 class Streamer:
@@ -96,23 +86,32 @@ class Streamer:
     class
     """
 
-    topic = None  # Kafka topic for this class of objects
-    exclude = None  # data fields to exclude
-    include = None  # list of extra (related, computed) fields to include
-    select_related = None  # list of related fields to select in queryset
-    prefetch_related = None  # list of related fields to prefetch in queryset
-    handle_related = None  # list of related fields to handle changes
-    batch_class = Batch
-    refresh_finalize_type = "enumerate"
-    batch_size = None
-    message_serializer = None
-    partition_key_serializer = None
-    partitioner = None
-    id_field = "id"
-    enumerate_ids_field = "ids"
-    enumerate_chunk_field = "chunk"
+    topic: str | None = None  # Kafka topic for this class of objects
+    exclude: Sequence[str] | None = None  # data fields to exclude
 
-    def __init__(self, **kwargs):
+    # list of extra (related, computed) fields to include
+    include: Sequence[str] | None = None
+
+    # list of related fields to select in queryset
+    select_related: Sequence[str] | None = None
+
+    # list of related fields to prefetch in queryset
+    prefetch_related: Sequence[str] | None = None
+
+    # list of related fields to handle changes
+    handle_related: Sequence[str] | None = None
+
+    batch_class: type[Batch] = Batch
+    refresh_finalize_type: str = "enumerate"
+    batch_size: int | None = None
+    message_serializer: MessageSerializer | None = None
+    partition_key_serializer: PartitionKeySerializer | None = None
+    partitioner: Partitioner | None = None
+    id_field: str = "id"
+    enumerate_ids_field: str = "ids"
+    enumerate_chunk_field: str = "chunk"
+
+    def __init__(self, **kwargs: Any):
         """
         Streamer constructor
         """
@@ -133,12 +132,17 @@ class Streamer:
         if self.partitioner is None:
             self.partitioner = get_setting("DEFAULT_PARTITIONER", resolve=True)
 
-    def get_data_for_object(self, obj, batch):
+    def get_data_for_object(self, obj: Model, batch: Batch) -> dict[str, Any]:
         """
         Returns data fields for given object
         """
 
-        def get_concrete_fields(obj, batch, related_name=None, exclude=None):
+        def get_concrete_fields(
+            obj: Model,
+            batch: Batch,
+            related_name: str | None = None,
+            exclude: Sequence[str] | None = None,
+        ) -> dict[str, Any]:
             if exclude and related_name:
                 exclude = [
                     f[len(related_name) + 1 :]
@@ -147,10 +151,10 @@ class Streamer:
                 ]
 
             data = {}
-            for f in obj._meta.concrete_fields:
+            for f in obj._meta.concrete_fields:  # type: ignore
                 if exclude and f.name in exclude:
                     continue
-                if isinstance(f, models.FileField):
+                if isinstance(f, FileField):
                     continue
 
                 if related_name:
@@ -182,12 +186,12 @@ class Streamer:
                 except ObjectDoesNotExist:
                     value = None
 
-                if isinstance(value, models.Manager):
+                if isinstance(value, Manager):
                     value = value.all()
                 if isinstance(value, (QuerySet, list, tuple)):
                     value_list = []
                     for sub_value in value:
-                        if isinstance(sub_value, models.Model):
+                        if isinstance(sub_value, Model):
                             value_list.append(
                                 get_concrete_fields(
                                     sub_value,
@@ -199,7 +203,7 @@ class Streamer:
                         else:
                             value_list.append(sub_value)
                     value = value_list
-                elif isinstance(value, models.Model):
+                elif isinstance(value, Model):
                     value = get_concrete_fields(
                         value, batch, related_name=name, exclude=self.exclude
                     )
@@ -208,10 +212,16 @@ class Streamer:
 
         return data
 
-    def get_id(self, obj, batch):
+    def get_id(self, obj: Model, batch: Batch) -> ObjectID | None:
         return obj.pk or getattr(obj, "_kafkastreamer_pre_delete_pk", None)
 
-    def get_message(self, obj, batch, msg_type=None, timestamp=None):
+    def get_message(
+        self,
+        obj: Model,
+        batch: Batch,
+        msg_type: str | None = None,
+        timestamp: datetime | None = None,
+    ) -> Message:
         """
         Returns Message tuple for given obj and message type
         """
@@ -234,7 +244,13 @@ class Streamer:
         msg = Message(meta=meta, obj_id=obj_id, data=data)
         return msg
 
-    def get_delete_message(self, obj_id, timestamp, obj=None, batch=None):
+    def get_delete_message(
+        self,
+        obj_id: ObjectID,
+        timestamp: datetime,
+        obj: Model | None = None,
+        batch: Batch | None = None,
+    ) -> Message:
         """
         Returns Message tuple for delete message type for given object ID
         """
@@ -255,13 +271,13 @@ class Streamer:
 
     def get_enumerate_message(
         self,
-        objects_ids,
-        timestamp,
-        batch=None,
-        chunk_index=None,
-        chunk_total=None,
-        chunk_session=None,
-    ):
+        objects_ids: Sequence[ObjectID],
+        timestamp: datetime,
+        batch: Batch | None = None,
+        chunk_index: int | None = None,
+        chunk_total: int | None = None,
+        chunk_session: str | None = None,
+    ) -> Message:
         """
         Returns Message tuple for enumerate message type for given objects IDs
         """
@@ -270,7 +286,7 @@ class Streamer:
             msg_type=TYPE_ENUMERATE,
             context=self.get_context_info(),
         )
-        data = {
+        data: dict[str, Any] = {
             self.enumerate_ids_field: objects_ids,
         }
         if chunk_index is not None and chunk_total and chunk_session:
@@ -287,7 +303,7 @@ class Streamer:
         msg = Message(meta=meta, obj_id=obj_id, data=data)
         return msg
 
-    def get_eos_message(self, timestamp):
+    def get_eos_message(self, timestamp: datetime) -> Message:
         """
         Returns Message tuple for end of stream message type
         """
@@ -299,7 +315,7 @@ class Streamer:
         msg = Message(meta=meta, obj_id=None, data={})
         return msg
 
-    def get_context_info(self):
+    def get_context_info(self) -> MessageContext:
         """
         Returns context information fields
         """
@@ -316,15 +332,22 @@ class Streamer:
         )
         return context
 
-    def get_extra_data(self, obj, batch):
+    def get_extra_data(
+        self, obj: Model | None, batch: Batch | None
+    ) -> dict[str, Any] | None:
         """
         Returns extra data fields for given object or batch
         """
         return None
 
     def get_batch(
-        self, objects=None, queryset=None, manager=None, objects_ids=None, **kwargs
-    ):
+        self,
+        objects: Iterable[Model] | None = None,
+        queryset: QuerySet | None = None,
+        manager: Manager | None = None,
+        objects_ids: Sequence[ObjectID] | None = None,
+        **kwargs: Any,
+    ) -> Batch:
         return self.batch_class(
             objects=objects,
             queryset=queryset,
@@ -335,7 +358,12 @@ class Streamer:
             **kwargs,
         )
 
-    def get_messages_for_batch(self, batch, msg_type=None, timestamp=None):
+    def get_messages_for_batch(
+        self,
+        batch: Batch,
+        msg_type: str | None = None,
+        timestamp: datetime | None = None,
+    ) -> Generator[Message, None]:
         """
         Returns Message tuples for batch of objects
         """
@@ -348,19 +376,19 @@ class Streamer:
                     timestamp=timestamp,
                 )
         except FieldError as e:
-            log.error("FieldError for model: %s: %s", batch.manager.model, e)
-            raise e
+            log.error("FieldError for model: %s: %s", batch.model, e)
+            raise
 
     def get_messages_for_objects(
         self,
-        objects,
-        manager=None,
-        objects_ids=None,
-        msg_type=None,
-        timestamp=None,
-        batch_size=None,
-        batch_kwargs=None,
-    ):
+        objects: Iterable[Model],
+        manager: Manager | None = None,
+        objects_ids: Sequence[ObjectID] | None = None,
+        msg_type: str | None = None,
+        timestamp: datetime | None = None,
+        batch_size: int | None = None,
+        batch_kwargs: dict[str, Any] | None = None,
+    ) -> Generator[Message, None]:
         """
         Returns Message tuples for given objects with given message type
         """
@@ -370,7 +398,7 @@ class Streamer:
 
         queryset = None
 
-        if isinstance(objects, models.Manager):
+        if isinstance(objects, Manager):
             manager = objects
             queryset = objects.all()
         elif isinstance(objects, QuerySet):
@@ -406,7 +434,12 @@ class Streamer:
             for msg in messages:
                 yield msg
 
-    def get_messages_for_ids_delete(self, objects_ids, timestamp=None, manager=None):
+    def get_messages_for_ids_delete(
+        self,
+        objects_ids: Sequence[ObjectID],
+        timestamp: datetime | None = None,
+        manager: Manager | None = None,
+    ) -> list[Message]:
         """
         Returns Message tuples for delete messages for given objects IDs
         """
@@ -420,10 +453,10 @@ class Streamer:
         ]
         return messages
 
-    def get_producer_options(self):
-        return get_setting("PRODUCER_OPTIONS")
+    def get_producer_options(self) -> dict[str, Any]:
+        return cast(dict[str, Any], get_setting("PRODUCER_OPTIONS"))
 
-    def get_producer(self, **kwargs):
+    def get_producer(self, **kwargs: Any) -> KafkaProducer | None:
         """
         Returns Kafka producer
         """
@@ -450,7 +483,7 @@ class Streamer:
             return None
 
         try:
-            producer = kafka.KafkaProducer(**options)
+            producer = KafkaProducer(**options)
         except NoBrokersAvailable as e:
             log.error("Kafka connect error: %s", e)
             return None
@@ -459,11 +492,11 @@ class Streamer:
 
     def send_messages(
         self,
-        messages,
-        batch_size=None,
-        producer=None,
-        flush=True,
-    ):
+        messages: Iterable[Message],
+        batch_size: int | None = None,
+        producer: KafkaProducer | None = None,
+        flush: bool = True,
+    ) -> int:
         """
         Sends given messages to Kafka
         """
@@ -494,16 +527,16 @@ class Streamer:
 
     def send_objects(
         self,
-        objects,
-        manager=None,
-        objects_ids=None,
-        msg_type=None,
-        timestamp=None,
-        batch_size=None,
-        batch_kwargs=None,
-        producer=None,
-        flush=True,
-    ):
+        objects: Iterable[Model],
+        manager: Manager | None = None,
+        objects_ids: Sequence[ObjectID] | None = None,
+        msg_type: str | None = None,
+        timestamp: datetime | None = None,
+        batch_size: int | None = None,
+        batch_kwargs: dict[str, Any] | None = None,
+        producer: KafkaProducer | None = None,
+        flush: bool = True,
+    ) -> int:
         """
         Sends given objects to Kafka
         """
@@ -525,13 +558,13 @@ class Streamer:
 
     def send_ids_delete(
         self,
-        objects_ids,
-        timestamp=None,
-        manager=None,
-        batch_size=None,
-        producer=None,
-        flush=True,
-    ):
+        objects_ids: Sequence[ObjectID],
+        timestamp: datetime | None = None,
+        manager: Manager | None = None,
+        batch_size: int | None = None,
+        producer: KafkaProducer | None = None,
+        flush: bool = True,
+    ) -> int:
         """
         Sends delete messages for given objects IDs
         """
@@ -549,13 +582,13 @@ class Streamer:
 
     def send_ids_enumerate(
         self,
-        objects_ids,
-        timestamp=None,
-        manager=None,
-        producer=None,
-        flush=True,
-        chunk_size=5000,
-    ):
+        objects_ids: Sequence[ObjectID],
+        timestamp: datetime | None = None,
+        manager: Manager | None = None,
+        producer: KafkaProducer | None = None,
+        flush: bool = True,
+        chunk_size: int = 5000,
+    ) -> int:
         """
         Sends enumerate message for given objects IDs
         """
@@ -591,134 +624,16 @@ class Streamer:
 
         return self.send_messages(messages, producer=producer, flush=flush)
 
-    def send_eos(self, timestamp=None, producer=None, flush=True):
+    def send_eos(
+        self,
+        timestamp: datetime | None = None,
+        producer: KafkaProducer | None = None,
+        flush: bool = True,
+    ) -> int:
         """
         Sends end of stream messages
         """
-        msg = self.get_eos_message(timestamp=timestamp)
-        return self.send_messages([msg], producer=producer, flush=flush)
-
-
-def send(
-    objects,
-    manager=None,
-    objects_ids=None,
-    msg_type=None,
-    timestamp=None,
-    batch_size=None,
-    batch_kwargs=None,
-    producer=None,
-    flush=True,
-):
-    """
-    Sends objects to associated streamer
-    """
-    if manager is not None:
-        model = manager.model
-    elif isinstance(objects, (models.Manager, QuerySet)):
-        model = objects.model
-    else:
-        if not objects:
-            return 0
-        model = objects[0].__class__
-
-    streamer = get_streamer(model)
-    messages = streamer.get_messages_for_objects(
-        objects,
-        manager=manager,
-        objects_ids=objects_ids,
-        msg_type=msg_type,
-        timestamp=timestamp,
-        batch_size=batch_size,
-        batch_kwargs=batch_kwargs,
-    )
-
-    squash = getattr(_context, "squash", None)
-    if squash is not None:
-        count = _add_to_squash(squash, model, streamer, messages)
-    else:
-        count = streamer.send_messages(
-            messages,
-            batch_size=batch_size,
-            producer=producer,
-            flush=flush,
-        )
-
-    return count
-
-
-def send_create(objects, **kwargs):
-    return send(objects, msg_type=TYPE_CREATE, **kwargs)
-
-
-def send_update(objects, **kwargs):
-    return send(objects, msg_type=TYPE_UPDATE, **kwargs)
-
-
-def send_delete(objects, **kwargs):
-    return send(objects, msg_type=TYPE_DELETE, **kwargs)
-
-
-def send_refresh(objects, **kwargs):
-    return send(objects, msg_type=TYPE_REFRESH, **kwargs)
-
-
-def full_refresh(model_or_manager=None, producer=None, flush=True):
-    """
-    Does full refresh for model or manager. Sends refresh message for each
-    object, then sends enumerate message with objects IDs
-    """
-
-    def _refresh(streamer, manager, producer, flush, timestamp=None):
         if timestamp is None:
             timestamp = timezone.now()
-
-        queryset = manager.all()
-        objects_ids = list(queryset.order_by().values_list("pk", flat=True))
-
-        count = streamer.send_objects(
-            queryset,
-            manager=manager,
-            objects_ids=objects_ids,
-            msg_type=TYPE_REFRESH,
-            timestamp=timestamp,
-            producer=producer,
-            flush=False,
-        )
-        if streamer.refresh_finalize_type == "enumerate":
-            count += streamer.send_ids_enumerate(
-                objects_ids,
-                manager=manager,
-                timestamp=timestamp,
-                producer=producer,
-                flush=flush,
-            )
-        elif streamer.refresh_finalize_type == "eos":
-            count += streamer.send_eos(
-                timestamp=timestamp, producer=producer, flush=flush
-            )
-
-        return count
-
-    if model_or_manager is None:
-        streamer_manager_list = [
-            (streamer, model._default_manager) for model, streamer in get_registry()
-        ]
-    elif isinstance(model_or_manager, models.Manager):
-        manager = model_or_manager
-        model = manager.model
-        streamer = get_streamer(model)
-        streamer_manager_list = [(streamer, manager)]
-    else:
-        model = model_or_manager
-        manager = model._default_manager
-        streamer = get_streamer(model)
-        streamer_manager_list = [(streamer, manager)]
-
-    count = 0
-    for streamer, manager in streamer_manager_list:
-        if producer is None:
-            producer = streamer.get_producer()
-        count += _refresh(streamer, manager, producer, flush)
-
-    return count
+        msg = self.get_eos_message(timestamp=timestamp)
+        return self.send_messages([msg], producer=producer, flush=flush)

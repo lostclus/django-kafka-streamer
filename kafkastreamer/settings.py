@@ -1,7 +1,9 @@
+from typing import Any
+
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-DEFAULTS = {
+DEFAULTS: dict[str, Any] = {
     "BOOTSTRAP_SERVERS": None,
     "PRODUCER_OPTIONS": {},
     "BATCH_SIZE": 500,
@@ -14,7 +16,7 @@ DEFAULTS = {
 }
 
 
-def get_setting(setting_name, resolve=False):
+def get_setting(setting_name: str, resolve: bool = False) -> Any:
     value = settings.KAFKA_STREAMER.get(
         setting_name,
         DEFAULTS[setting_name],
