@@ -1,7 +1,9 @@
 import random
 
 
-def modulo_partitioner(key, all_partitions, available):
+def modulo_partitioner(
+    key: bytes, all_partitions: list[int], available: list[int]
+) -> int:
     """
     Returns partition by formula int(key) % len(partiotons). Assume that key is
     bytes containing ASCII digits. If key is empty then random partition will

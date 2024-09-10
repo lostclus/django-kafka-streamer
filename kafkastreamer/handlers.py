@@ -1,19 +1,23 @@
+from typing import Any
+
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
+from django.db.models import Manager, Model
 from django.utils import timezone
 
 from .constants import TYPE_CREATE, TYPE_DELETE, TYPE_UPDATE
-from .context import _add_to_squash, _context
+from .context import is_model_handler_stopped
 from .registry import get_streamer, get_streamer_for_related
+from .squashing import add_to_squash, is_squashing
 
 
-def handle_post_save(sender, instance=None, **kwargs):
-    stop_handlers = getattr(_context, "stop_handlers", None)
-    if stop_handlers is not None:
-        if not stop_handlers or sender in stop_handlers:
-            return
+def handle_post_save(
+    sender: type[Model], instance: Model | None = None, **kwargs: Any
+) -> None:
+    if instance is None:
+        return
+    if is_model_handler_stopped(sender):
+        return
 
-    squash = getattr(_context, "squash", None)
     created = kwargs.get("created", False)
     msg_type = created and TYPE_CREATE or TYPE_UPDATE
     timestamp = timezone.now()
@@ -25,8 +29,8 @@ def handle_post_save(sender, instance=None, **kwargs):
             msg_type=msg_type,
             timestamp=timestamp,
         )
-        if squash is not None:
-            _add_to_squash(squash, sender, streamer, messages)
+        if is_squashing():
+            add_to_squash(sender, streamer, messages)
         else:
             streamer.send_messages(messages)
 
@@ -36,40 +40,41 @@ def handle_post_save(sender, instance=None, **kwargs):
         except ObjectDoesNotExist:
             continue
 
-        messages = None
-        if isinstance(rel, models.Model):
-            rel._kafkastreamer_from_related = instance
+        if isinstance(rel, Model):
+            setattr(rel, "_kafkastreamer_from_related", instance)
             messages = streamer.get_messages_for_objects(
                 [rel],
                 msg_type=TYPE_UPDATE,
                 timestamp=timestamp,
             )
             model = rel.__class__
-        elif isinstance(rel, models.Manager):
+        elif isinstance(rel, Manager):
             messages = streamer.get_messages_for_objects(
-                rel,
+                rel.all(),
                 msg_type=TYPE_UPDATE,
                 timestamp=timestamp,
             )
             model = rel.model
-        if messages is not None:
-            if squash is not None:
-                _add_to_squash(squash, model, streamer, messages)
-            else:
-                streamer.send_messages(messages)
+        else:
+            continue
+        if is_squashing():
+            add_to_squash(model, streamer, messages)
+        else:
+            streamer.send_messages(messages)
 
 
-def handle_pre_delete(sender, instance, **kwargs):
-    instance._kafkastreamer_pre_delete_pk = instance.pk
+def handle_pre_delete(sender: type[Model], instance: Model, **kwargs: Any) -> None:
+    setattr(instance, "_kafkastreamer_pre_delete_pk", instance.pk)
 
 
-def handle_post_delete(sender, instance=None, **kwargs):
-    stop_handlers = getattr(_context, "stop_handlers", None)
-    if stop_handlers is not None:
-        if not stop_handlers or sender in stop_handlers:
-            return
+def handle_post_delete(
+    sender: type[Model], instance: Model | None = None, **kwargs: Any
+) -> None:
+    if instance is None:
+        return
+    if is_model_handler_stopped(sender):
+        return
 
-    squash = getattr(_context, "squash", None)
     msg_type = TYPE_DELETE
     timestamp = timezone.now()
 
@@ -80,8 +85,8 @@ def handle_post_delete(sender, instance=None, **kwargs):
             msg_type=msg_type,
             timestamp=timestamp,
         )
-        if squash is not None:
-            _add_to_squash(squash, sender, streamer, messages)
+        if is_squashing():
+            add_to_squash(sender, streamer, messages)
         else:
             streamer.send_messages(messages)
 
@@ -91,28 +96,35 @@ def handle_post_delete(sender, instance=None, **kwargs):
         except ObjectDoesNotExist:
             continue
 
-        messages = None
-        if isinstance(rel, models.Model):
+        if isinstance(rel, Model):
             messages = streamer.get_messages_for_objects(
                 [rel],
                 msg_type=TYPE_UPDATE,
                 timestamp=timestamp,
             )
             model = rel.__class__
-        elif isinstance(rel, models.Manager):
+        elif isinstance(rel, Manager):
             messages = streamer.get_messages_for_objects(
-                rel,
+                rel.all(),
                 msg_type=TYPE_UPDATE,
                 timestamp=timestamp,
             )
             model = rel.model
-        if messages is not None:
-            if squash is not None:
-                _add_to_squash(squash, model, streamer, messages)
-            else:
-                streamer.send_messages(messages)
+        else:
+            continue
+        if is_squashing():
+            add_to_squash(model, streamer, messages)
+        else:
+            streamer.send_messages(messages)
 
 
-def handle_m2m_changed(sender, instance=None, action=None, **kwargs):
-    if action.startswith("post_"):
+def handle_m2m_changed(
+    sender: type[Model],
+    instance: Model | None = None,
+    action: str | None = None,
+    **kwargs: Any,
+) -> None:
+    if instance is None:
+        return
+    if action and action.startswith("post_"):
         handle_post_save(instance.__class__, instance=instance, **kwargs)

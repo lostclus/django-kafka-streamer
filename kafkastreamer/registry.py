@@ -1,9 +1,12 @@
 import collections
+from collections.abc import Generator
 from importlib import import_module
+from typing import Any
 
 from django.apps import apps
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
+from django.db.models import Model
 from django.db.models.fields.related_descriptors import (
     ForwardManyToOneDescriptor,
     ForwardOneToOneDescriptor,
@@ -13,13 +16,15 @@ from django.db.models.fields.related_descriptors import (
 )
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_delete
 
-_registry = {}
+from .stream import Streamer
+
 RegistryKey = collections.namedtuple(
     "RegistryKey", ["app_label", "object_name", "rel_name"]
 )
+_registry: dict[RegistryKey, Streamer] = {}
 
 
-def _make_registry_key(model, rel_name=None):
+def _make_registry_key(model: type[Model], rel_name: str | None = None) -> RegistryKey:
     return RegistryKey(
         model._meta.app_label,
         model._meta.object_name,
@@ -27,7 +32,12 @@ def _make_registry_key(model, rel_name=None):
     )
 
 
-def register(model, streamer_class=None, set_handlers=True, **kwargs):
+def register(
+    model: type[Model],
+    streamer_class: type[Streamer] | None = None,
+    set_handlers: bool = True,
+    **kwargs: Any,
+) -> Any:
     """
     Registers Django model using given streamer class. May be used as plain
     function call or as decorator on streamer class.
@@ -39,7 +49,7 @@ def register(model, streamer_class=None, set_handlers=True, **kwargs):
         handle_pre_delete,
     )
 
-    def wrapper(cls):
+    def wrapper(cls: type[Streamer]) -> type[Streamer]:
         register(model, cls)
         return cls
 
@@ -58,14 +68,16 @@ def register(model, streamer_class=None, set_handlers=True, **kwargs):
     for rel_name in streamer.handle_related or []:
         rel_desc = getattr(model, rel_name)
 
-        rel_model_and_attr = []
+        rel_model_and_attr: list[tuple[type[Model], str | None, bool]] = []
 
         if isinstance(rel_desc, ManyToManyDescriptor):
             rel_model_and_attr.append(
                 (rel_desc.rel.model, rel_desc.rel.related_name, True)
             )
-            rel_model_and_attr.append((rel_desc.rel.through, None, True))
+            if rel_desc.rel.through:
+                rel_model_and_attr.append((rel_desc.rel.through, None, True))
         elif isinstance(rel_desc, ReverseManyToOneDescriptor):
+            assert isinstance(rel_desc.rel.related_model, type)
             rel_model_and_attr.append(
                 (rel_desc.rel.related_model, rel_desc.rel.field.name, True)
             )
@@ -82,6 +94,7 @@ def register(model, streamer_class=None, set_handlers=True, **kwargs):
                 )
             )
         elif isinstance(rel_desc, ReverseOneToOneDescriptor):
+            assert isinstance(rel_desc.related.related_model, type)
             rel_model_and_attr.append(
                 (rel_desc.related.related_model, rel_desc.related.field.name, True)
             )
@@ -102,14 +115,14 @@ def register(model, streamer_class=None, set_handlers=True, **kwargs):
                 m2m_changed.connect(handle_m2m_changed, sender=rel_model)
 
 
-def get_streamer(model):
+def get_streamer(model: type[Model]) -> Streamer | None:
     """
     Returns streamer instance for given Django model or None
     """
     return _registry.get(_make_registry_key(model))
 
 
-def get_registry():
+def get_registry() -> list[tuple[type[Model], Streamer]]:
     """
     Returns (model, streamer) tuples for all registered streamer and models
     """
@@ -121,7 +134,9 @@ def get_registry():
     return result
 
 
-def get_streamer_for_related(model):
+def get_streamer_for_related(
+    model: type[Model],
+) -> Generator[tuple[str, Streamer], None]:
     for_key = _make_registry_key(model)
 
     for key, streamer in _registry.items():
@@ -133,8 +148,10 @@ def get_streamer_for_related(model):
         yield (key.rel_name, streamer)
 
 
-def autodiscover():
+def autodiscover() -> None:
     for config in apps.app_configs.values():
+        if config.module is None:
+            continue
         module_name = config.module.__name__
         try:
             import_module(module_name + ".streamers")
