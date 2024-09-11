@@ -8,13 +8,17 @@ from tests.testapp.models import ModelA
 def test_refresh(refresh_model_m):
     result = refresh()
 
-    assert result == {"models_count": 3}
+    assert result == {"models_count": 7}
 
     refresh_model_m.delay.assert_has_calls(
         [
             mock.call(model_name="testapp.ModelA", source=None),
             mock.call(model_name="testapp.ModelB", source=None),
             mock.call(model_name="testapp.ModelC", source=None),
+            mock.call(model_name="testapp.ModelD", source=None),
+            mock.call(model_name="testapp.ModelE", source=None),
+            mock.call(model_name="testapp.ModelF", source=None),
+            mock.call(model_name="testapp.ModelG", source=None),
         ],
         any_order=True,
     )
