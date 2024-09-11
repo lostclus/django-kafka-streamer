@@ -79,10 +79,10 @@ def test_register_with_related(registry):
     assert key in registry
     assert isinstance(registry[key], ModelCStreamerHandleRelated)
 
-    key = RegistryKey("testapp", "ModelA", "modelc")
+    key = RegistryKey("testapp", "ModelA", "modelc_set")
     assert key in registry
     assert isinstance(registry[key], ModelCStreamerHandleRelated)
 
-    key = RegistryKey("testapp", "ModelB", "modelc")
+    key = RegistryKey("testapp", "ModelB", "modelc_set")
     assert key in registry
     assert isinstance(registry[key], ModelCStreamerHandleRelated)

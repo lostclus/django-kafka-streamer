@@ -1,4 +1,5 @@
 import collections
+import logging
 from collections.abc import Generator
 from importlib import import_module
 from typing import Any
@@ -17,6 +18,8 @@ from django.db.models.fields.related_descriptors import (
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_delete
 
 from .stream import Streamer
+
+log = logging.getLogger(__name__)
 
 RegistryKey = collections.namedtuple(
     "RegistryKey", ["app_label", "object_name", "rel_name"]
@@ -57,6 +60,9 @@ def register(
         # Called as class decorator
         return wrapper
 
+    log.info(
+        f"Registering model {model.__name__} with streamer {streamer_class.__name__}"
+    )
     streamer = streamer_class(**kwargs)
     _registry[_make_registry_key(model)] = streamer
 
@@ -76,15 +82,22 @@ def register(
             )
             if rel_desc.rel.through:
                 rel_model_and_attr.append((rel_desc.rel.through, None, True))
+            log.debug(
+                f"Found {rel_desc.__class__.__name__} relation from"
+                f"{model.__name__}({rel_name}) to"
+                f" {rel_desc.rel.model.__name__}({rel_desc.rel.related_name})"
+            )
         elif isinstance(rel_desc, ReverseManyToOneDescriptor):
             assert isinstance(rel_desc.rel.related_model, type)
             rel_model_and_attr.append(
                 (rel_desc.rel.related_model, rel_desc.rel.field.name, True)
             )
-        elif isinstance(
-            rel_desc,
-            (ForwardOneToOneDescriptor, ForwardManyToOneDescriptor),
-        ):
+            log.debug(
+                f"Found {rel_desc.__class__.__name__} relation from"
+                f" {model.__name__}({rel_name}) to"
+                f" {rel_desc.rel.related_model.__name__}({rel_desc.rel.field.name})"
+            )
+        elif isinstance(rel_desc, ForwardOneToOneDescriptor):
             set_delete_handler = rel_desc.field.remote_field.on_delete != models.CASCADE
             rel_model_and_attr.append(
                 (
@@ -93,11 +106,40 @@ def register(
                     set_delete_handler,
                 )
             )
+            log.debug(
+                f"Found ({rel_desc.__class__.__name__}) relation from"
+                f" {model.__name__}({rel_name}) to"
+                f" {rel_desc.field.related_model.__name__}"
+                f"({rel_desc.field.remote_field.name})"
+            )
+        elif isinstance(rel_desc, ForwardManyToOneDescriptor):
+            set_delete_handler = rel_desc.field.remote_field.on_delete != models.CASCADE
+            rel_model_and_attr.append(
+                (
+                    rel_desc.field.related_model,
+                    rel_desc.field.remote_field.get_accessor_name(),
+                    set_delete_handler,
+                )
+            )
+            log.debug(
+                f"Found ({rel_desc.__class__.__name__}) relation from"
+                f" {model.__name__}({rel_name}) to"
+                f" {rel_desc.field.related_model.__name__}"
+                f"({rel_desc.field.remote_field.get_accessor_name()})"
+            )
         elif isinstance(rel_desc, ReverseOneToOneDescriptor):
             assert isinstance(rel_desc.related.related_model, type)
             rel_model_and_attr.append(
                 (rel_desc.related.related_model, rel_desc.related.field.name, True)
             )
+            log.debug(
+                f"Found ({rel_desc.__class__.__name__}) relation from"
+                f" {model.__name__}({rel_name}) to"
+                f" {rel_desc.related.related_model.__name__}"
+                f"({rel_desc.related.field.name})"
+            )
+        else:
+            raise Exception(f"Unknown relation: {rel_desc}")
 
         for rel_model, rev_name, set_delete_handler in rel_model_and_attr:
             if rev_name:
