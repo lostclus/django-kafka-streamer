@@ -28,3 +28,38 @@ Links:
 
 * GitHub: https://github.com/lostclus/django-kafka-streamer/
 * PyPI: https://pypi.org/project/django-kafka-streamer/
+
+Usage:
+
+`yourapp/models.py`::
+
+    from django.db import models
+
+    class MyModel(models.Model):
+        field1 = models.IntegerField()
+        field2 = models.CharField(max_length=10)
+
+`yourapp/stramers.py`::
+
+    from kafkastreamer import Streamer, register
+    from .models import MyModel
+
+    @register(MyModel)
+    class MyModelStreamer(Streamer):
+        topic = "model-a"
+
+`yourproject/settings.py`::
+
+    INSTALLED_APPS = [
+        ...
+        "kafkastreamer",
+    ]
+
+    KAFKA_STREAMER = {
+        "BOOTSTRAP_SERVERS": ["localhost:9092"],
+    },
+
+Any changes in ``MyModel`` data will be automatically streamed to Kafka. To
+force stream all data in all registered models type::
+
+    python manage.py kafkastreamer_refresh
