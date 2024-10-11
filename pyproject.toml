@@ -6,7 +6,7 @@ authors = [
 ]
 description = "Stream data to Apache Kafka."
 readme = "README.rst"
-keywords = ["Django", "Kafka"]
+keywords = ["Django", "Kafka", "microservices"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",
@@ -52,6 +52,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["kafkastreamer"]
 
+[tool.setuptools.package-data]
+kafkastreamer = ["py.typed"]
+
 [tool.setuptools.dynamic]
 version = {attr = "kafkastreamer.__version__"}
 
@@ -70,7 +73,6 @@ exclude = [
     "venv/*",
     "tox/*",
     "docs/*",
-    "testproject/*",
     "build/*",
 ]
 max-line-length = 88
