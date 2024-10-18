@@ -28,6 +28,8 @@ Links:
 
 * GitHub: https://github.com/lostclus/django-kafka-streamer/
 * PyPI: https://pypi.org/project/django-kafka-streamer/
+* Consumer library: https://github.com/lostclus/aiosafeconsumer
+* Example application: https://github.com/lostclus/WeatherApp
 
 Usage:
 
