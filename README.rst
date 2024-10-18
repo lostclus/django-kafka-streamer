@@ -14,6 +14,10 @@ django-kafka-streamer
 .. image:: https://img.shields.io/pypi/djversions/django-kafka-streamer
     :alt: PyPI - Django Version
 
+.. image:: https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26
+    :target: https://djangopackages.org/packages/p/django-kafka-streamer/
+    :alt: Published on Django Packages
+
 django-kafka-streamer is a Django application and library for streaming data to
 Apache Kafka.
 
