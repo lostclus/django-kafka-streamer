@@ -28,6 +28,7 @@ classifiers = [
     "Framework :: Django :: 4.2",
     "Framework :: Django :: 5.0",
     "Framework :: Django :: 5.1",
+    "Typing :: Typed",
 ]
 requires-python = ">= 3.10"
 dependencies = [
