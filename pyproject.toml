@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Framework :: Django",
     "Framework :: Django :: 3",
     "Framework :: Django :: 3.2",
@@ -60,13 +61,9 @@ version = {attr = "kafkastreamer.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m \"not realkafka\""
-markers = [
-    "realkafka: tests that use real (not mocked) Kafka"
-]
 
 [tool.black]
-target-version = ["py312"]
+target-version = ["py313"]
 
 [tool.flake8]
 exclude = [

@@ -2,6 +2,9 @@ import os
 
 from pytest_djangoapp import configure_djangoapp_plugin
 
+if not os.getenv("KAFKA_BOOTSTRAP_SERVERS"):
+    collect_ignore = ["test_real_kafka.py"]
+
 pytest_plugins = configure_djangoapp_plugin(
     app_name="kafkastreamer",
     settings={

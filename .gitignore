@@ -13,8 +13,8 @@ __pycache__/
 TODO
 
 # virtual environments
-.venv
-venv
+/.venv
+/venv
 
 # IDE and Tooling files
 .idea/*
@@ -23,3 +23,5 @@ venv
 
 # macOS
 .DS_Store
+
+/.local

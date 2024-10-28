@@ -1,4 +1,6 @@
+import json
 import os
+from datetime import datetime, timezone
 
 import pytest
 from django.conf import settings
@@ -20,7 +22,6 @@ def bootstrap_servers():
         yield servers
 
 
-@pytest.mark.realkafka
 @pytest.mark.parametrize(
     ("partition_key_serializer", "partitioner"),
     [
@@ -36,15 +37,33 @@ def test_produce_consume(bootstrap_servers, partition_key_serializer, partitione
         bootstrap_servers=bootstrap_servers,
         consumer_timeout_ms=10,
     )
+
     assert list(consumer) == []
 
+    objects = []
     with stop_handlers():
-        obj = ModelA.objects.create(field1=1, field2="a")
+        for i in range(20):
+            obj = ModelA.objects.create(field1=i, field2=f"a{i}")
+            objects.append(obj)
+
     streamer = ModelAStreamer(
         partition_key_serializer=partition_key_serializer,
         partitioner=partitioner,
     )
-    count = streamer.send_objects([obj], msg_type=TYPE_CREATE)
-    assert count == 1
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+    count = streamer.send_objects(objects, msg_type=TYPE_CREATE, timestamp=timestamp)
+    assert count == len(objects)
 
-    assert len(list(consumer)) > 0
+    consumed_records = list(consumer)
+    consumed_data = [json.loads(record.value) for record in consumed_records]
+    assert consumed_data == [
+        {
+            "_time": timestamp.isoformat().replace("+00:00", "Z"),
+            "_type": "create",
+            "_source": "test",
+            "id": obj.pk,
+            "field1": i,
+            "field2": f"a{i}",
+        }
+        for i, obj in enumerate(objects)
+    ]

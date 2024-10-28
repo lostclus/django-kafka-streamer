@@ -1,0 +1,36 @@
+services:
+  kafka:
+    image: docker.io/bitnami/kafka:latest
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_BROKER_ID: "1"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_LISTENERS: "CONTROLLER://kafka:9093,PLAINTEXT://:9092"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_ENABLE_KRAFT: "yes"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 50
+
+  test: &test-config
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./:/test
+    environment:
+      DEBUG: "1"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+
+  test-coverage:
+    <<: *test-config
+    command: tox run -e coverage
