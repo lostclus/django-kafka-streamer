@@ -150,6 +150,7 @@ def test_get_message_with_extra_data():
             "y": 2,
             "z": 3,
             "e": "extra",
+            "pi": 3.14,
         },
     )
 
