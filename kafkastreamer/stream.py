@@ -111,6 +111,7 @@ class Streamer:
     id_field: str = "id"
     enumerate_ids_field: str = "ids"
     enumerate_chunk_field: str = "chunk"
+    enumerate_chunk_size: int = 5000
 
     def __init__(self, **kwargs: Any):
         """
@@ -594,13 +595,15 @@ class Streamer:
         manager: Manager | None = None,
         producer: KafkaProducer | None = None,
         flush: bool = True,
-        chunk_size: int = 5000,
+        chunk_size: int | None = None,
     ) -> int:
         """
         Sends enumerate message for given objects IDs
         """
         if timestamp is None:
             timestamp = timezone.now()
+        if chunk_size is None:
+            chunk_size = self.enumerate_chunk_size
 
         batch = self.get_batch(manager=manager)
         if len(objects_ids) <= chunk_size:
