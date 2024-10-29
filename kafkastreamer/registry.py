@@ -1,8 +1,7 @@
-import collections
 import logging
 from collections.abc import Generator
 from importlib import import_module
-from typing import Any
+from typing import Any, NamedTuple
 
 from django.apps import apps
 from django.core.exceptions import ImproperlyConfigured
@@ -21,16 +20,20 @@ from .stream import Streamer
 
 log = logging.getLogger(__name__)
 
-RegistryKey = collections.namedtuple(
-    "RegistryKey", ["app_label", "object_name", "rel_name"]
-)
+
+class RegistryKey(NamedTuple):
+    app_label: str
+    object_name: str
+    rel_name: str | None
+
+
 _registry: dict[RegistryKey, Streamer] = {}
 
 
 def _make_registry_key(model: type[Model], rel_name: str | None = None) -> RegistryKey:
     return RegistryKey(
         model._meta.app_label,
-        model._meta.object_name,
+        model._meta.object_name or model.__name__,
         rel_name,
     )
 

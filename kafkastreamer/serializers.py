@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from django.core.serializers.json import DjangoJSONEncoder
 
@@ -17,7 +18,7 @@ def flat_json_message_serializer(
     meta = msg.meta
     context = meta.context
 
-    context_fields = {}
+    context_fields: dict[str, Any] = {}
     if context.source:
         context_fields["_source"] = context.source
     if context.user_id:

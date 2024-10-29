@@ -11,7 +11,7 @@ from .constants import TYPE_CREATE, TYPE_DELETE, TYPE_REFRESH, TYPE_UPDATE
 from .registry import get_registry, get_streamer
 from .squashing import add_to_squash, is_squashing
 from .stream import Streamer
-from .types import ObjectID
+from .types import ObjectID, RefreshFinalizeType
 
 
 def send(
@@ -112,7 +112,7 @@ def full_refresh(
             producer=producer,
             flush=False,
         )
-        if streamer.refresh_finalize_type == "enumerate":
+        if streamer.refresh_finalize_type == RefreshFinalizeType.ENUMERATE:
             count += streamer.send_ids_enumerate(
                 objects_ids,
                 manager=manager,
@@ -120,7 +120,7 @@ def full_refresh(
                 producer=producer,
                 flush=flush,
             )
-        elif streamer.refresh_finalize_type == "eos":
+        elif streamer.refresh_finalize_type == RefreshFinalizeType.EOS:
             count += streamer.send_eos(
                 timestamp=timestamp, producer=producer, flush=flush
             )
