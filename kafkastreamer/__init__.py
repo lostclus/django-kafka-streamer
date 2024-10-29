@@ -21,6 +21,7 @@ from .registry import get_registry, get_streamer, get_streamer_for_related, regi
 from .serializers import flat_json_message_serializer, object_id_key_serializer
 from .squashing import squash
 from .stream import Batch, Streamer
+from .types import RefreshFinalizeType
 
 __version__ = "1.3.1"
 
@@ -35,6 +36,7 @@ __all__ = [
     "is_model_handler_stopped",
     "modulo_partitioner",
     "object_id_key_serializer",
+    "RefreshFinalizeType",
     "register",
     "send",
     "send_create",
