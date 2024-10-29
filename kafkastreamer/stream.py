@@ -22,6 +22,7 @@ from .types import (
     ObjectID,
     Partitioner,
     PartitionKeySerializer,
+    RefreshFinalizeType,
 )
 
 log = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ class Streamer:
     handle_related: Sequence[str] | None = None
 
     batch_class: type[Batch] = Batch
-    refresh_finalize_type: str = "enumerate"
+    refresh_finalize_type: RefreshFinalizeType = RefreshFinalizeType.ENUMERATE
     batch_size: int | None = None
     message_serializer: MessageSerializer | None = None
     partition_key_serializer: PartitionKeySerializer | None = None
@@ -212,8 +213,14 @@ class Streamer:
 
         return data
 
-    def get_id(self, obj: Model, batch: Batch) -> ObjectID | None:
-        return obj.pk or getattr(obj, "_kafkastreamer_pre_delete_pk", None)
+    def get_id(self, obj: Model, batch: Batch) -> ObjectID:
+        if obj.pk is not None:
+            assert isinstance(obj.pk, ObjectID)
+            return obj.pk
+
+        obj_id = getattr(obj, "_kafkastreamer_pre_delete_pk")
+        assert isinstance(obj_id, ObjectID)
+        return obj_id
 
     def get_message(
         self,
@@ -298,8 +305,8 @@ class Streamer:
         extra = self.get_extra_data(None, batch)
         if extra:
             data.update(extra)
-        obj_id = objects_ids and objects_ids[0] or None
 
+        obj_id = objects_ids[0] if objects_ids else None
         msg = Message(meta=meta, obj_id=obj_id, data=data)
         return msg
 
