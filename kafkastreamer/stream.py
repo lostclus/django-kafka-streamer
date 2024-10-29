@@ -93,6 +93,9 @@ class Streamer:
     # list of extra (related, computed) fields to include
     include: Sequence[str] | None = None
 
+    # static data to include in every message
+    static_fields: dict[str, Any] | None = None
+
     # list of related fields to select in queryset
     select_related: Sequence[str] | None = None
 
@@ -344,9 +347,10 @@ class Streamer:
         self, obj: Model | None, batch: Batch | None
     ) -> dict[str, Any] | None:
         """
-        Returns extra data fields for given object or batch
+        Returns extra data fields for given object or batch. Default
+        implementation just returns `static_fields`.
         """
-        return None
+        return self.static_fields
 
     def get_batch(
         self,

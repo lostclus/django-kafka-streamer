@@ -11,12 +11,14 @@ class ModelAStreamer(Streamer):
 class ModelBStreamer(Streamer):
     topic = "model-b"
     include = ["z"]
+    static_fields = {"pi": 3.14}
 
     def load_z(self, obj, batch):
         return obj.x + obj.y
 
     def get_extra_data(self, obj, batch):
-        return {"e": "extra"}
+        data = super().get_extra_data(obj, batch)
+        return {**data, "e": "extra"}
 
 
 class ModelCStreamer(Streamer):
