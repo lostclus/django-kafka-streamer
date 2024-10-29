@@ -2,12 +2,14 @@ import datetime
 from unittest import mock
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 
 from kafkastreamer import (
     TYPE_CREATE,
     TYPE_DELETE,
     TYPE_ENUMERATE,
     TYPE_EOS,
+    Streamer,
     stop_handlers,
 )
 from kafkastreamer.serializers import object_id_key_serializer
@@ -20,6 +22,11 @@ from tests.utils import patch_producer
 def test_constructor():
     streamer = ModelAStreamer(batch_size=100)
     assert streamer.batch_size == 100
+
+
+def test_constructor_no_topic():
+    with pytest.raises(ImproperlyConfigured):
+        Streamer()
 
 
 def test_get_id():
