@@ -46,6 +46,10 @@ tests = [
     "pytest-cov",
     "pytest-djangoapp",
 ]
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+]
 
 [build-system]
 requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
