@@ -4,13 +4,13 @@ django-kafka-streamer
 .. image:: https://github.com/lostclus/django-kafka-streamer/actions/workflows/tests.yml/badge.svg
     :target: https://github.com/lostclus/django-kafka-streamer/actions
 
-.. image:: https://img.shields.io/pypi/v/django-kafka-streamer.svg
-    :target: https://pypi.org/project/django-kafka-streamer/
-    :alt: Current version on PyPi
-
 .. image:: https://readthedocs.org/projects/django-kafka-streamer/badge/?version=latest
     :target: http://django-kafka-streamer.readthedocs.io/
     :alt: Documentation
+
+.. image:: https://img.shields.io/pypi/v/django-kafka-streamer.svg
+    :target: https://pypi.org/project/django-kafka-streamer/
+    :alt: Current version on PyPi
 
 .. image:: https://img.shields.io/pypi/pyversions/django-kafka-streamer
     :alt: PyPI - Python Version
@@ -74,3 +74,13 @@ Any changes in ``MyModel`` data will be automatically streamed to Kafka. To
 force stream all data in all registered models type::
 
     python manage.py kafkastreamer_refresh
+
+The data streamed to the ``model-a`` Kafka topic has following structure::
+
+    {
+        "_time": "2023-01-01T00:00:00Z",
+        "_type": "create",
+        "id": 1,
+        "field1": 1,
+        "field2": "abc"
+    }

@@ -17,7 +17,7 @@ def refresh(
     models: Sequence[str] | None = None, source: str | None = None
 ) -> dict[str, Any]:
     """
-    Does full refresh for specified models or all registered models
+    Does full refresh for specified models or all registered models.
     """
 
     if models is None:
@@ -35,7 +35,7 @@ def refresh(
 @shared_task
 def refresh_model(model_name: str, source: str | None = None) -> dict[str, Any]:
     """
-    Does full refresh for specified model
+    Does full refresh for specified model.
     """
 
     model = apps.get_model(model_name)

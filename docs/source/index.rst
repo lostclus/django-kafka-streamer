@@ -48,3 +48,4 @@ Table of Contents
    configuring
    streamers
    API </apidoc/index>
+   commands
