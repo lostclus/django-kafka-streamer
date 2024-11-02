@@ -3,9 +3,9 @@
 Setup streamers
 ===============
 
-In order to kafkastreamer to know which modules to stream, you need to create
-`streamers.py` file and define a streamer class in it for each model that needs to be
-streamed. The minimum configuring is::
+In order to django-kafka-streamer to know which modules to stream, you need to
+create a `streamers.py` file in the app directory and define a streamer class for
+each model that needs to be streamed. The minimum configuration is::
 
     from kafkastreamer import Streamer, register
     from .models import MyModel
@@ -33,14 +33,14 @@ send to the ``my-topic`` Kafka topic:
         "field2": "abc"
     }
 
-You can use ``exclude`` attribute exclude some fields::
+You can use the ``exclude`` attribute to exclude some fields::
 
     @register(MyModel)
     class MyModelStreamer(Streamer):
         topic = "my-topic"
         exclude = ["field2"]
 
-Then output well be:
+Then the output will be:
 
 .. code-block:: json
 
@@ -61,7 +61,7 @@ The model can have related fields. For example::
         field2 = models.CharField(max_length=10)
         other = models.ForeignKey(OtherModel)
 
-To make related object appears in output, add it to ``include`` and
+To make a related object appear in the output, add it to ``include`` and
 ``select_related`` lists::
 
     @register(MyModel)
@@ -70,7 +70,7 @@ To make related object appears in output, add it to ``include`` and
         include = ["other"]
         select_related = ["other"]
 
-Then output well be:
+Then the output will be:
 
 .. code-block:: json
 
@@ -88,7 +88,7 @@ Then output well be:
     }
 
 To re-stream the data when the related object of ``OtherModel`` is changed, add
-it to ``handle_related`` list::
+it to the ``handle_related`` list::
 
     @register(MyModel)
     class MyModelStreamer(Streamer):
@@ -97,15 +97,15 @@ it to ``handle_related`` list::
         select_related = ["other"]
         handle_related = ["other"]
 
-To add additional fields with constant values, use ``static_fields`` dictionary::
+To add additional fields with constant values, use the ``static_fields`` dictionary::
 
     @register(MyModel)
     class MyModelStreamer(Streamer):
         topic = "my-topic"
         static_fields = {"model": "MyModel"}
 
-To add additional fields with calculated values, define ``load_<field>`` method,
-and add field to the ``include`` list::
+To add additional field with calculated value, define a ``load_<field>`` method,
+and add the field to the ``include`` list::
 
     @register(MyModel)
     class MyModelStreamer(Streamer):

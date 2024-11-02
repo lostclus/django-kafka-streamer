@@ -22,10 +22,10 @@ def is_squashing() -> bool:
 @contextmanager
 def squash() -> Generator[None, None]:
     """
-    Context manager to squash messages. Within this context manager messages is
-    not sends immediately but accumulates in the buffer. Items in buffer is
-    grouped by object ID, so that later items overrides earliest to avoid
-    unnecessary messages that represents intermediate state.
+    Context manager to squash messages. Within this context manager messages
+    are not sent immediately but accumulate in the buffer. Items in buffer is
+    grouped by object ID, so that later items override earliest to avoid
+    unnecessary messages that represent an intermediate state.
     """
     from .registry import get_streamer
 

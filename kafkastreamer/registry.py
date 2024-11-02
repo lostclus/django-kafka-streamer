@@ -45,8 +45,8 @@ def register(
     **kwargs: Any,
 ) -> Any:
     """
-    Registers Django model using given streamer class. May be used as plain
-    function call or as decorator on streamer class.
+    Registers Django model using the given streamer class. It may be used as
+    a plain function call or as decorator on streamer class.
     """
     from .handlers import (
         handle_m2m_changed,
@@ -169,7 +169,7 @@ def get_streamer(model: type[Model]) -> Streamer | None:
 
 def get_registry() -> list[tuple[type[Model], Streamer]]:
     """
-    Returns (model, streamer) tuples for all registered streamer and models.
+    Returns (model, streamer) tuples for all registered streamers and models.
     """
     result = []
     for key, streamer in _registry.items():
