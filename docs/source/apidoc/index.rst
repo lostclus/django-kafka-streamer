@@ -5,3 +5,4 @@
    decorators
    constants
    types
+   celery_tasks
