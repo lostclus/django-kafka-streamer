@@ -26,7 +26,7 @@ def send(
     flush: bool = True,
 ) -> int:
     """
-    Sends objects to associated streamer
+    Sends objects to associated streamer.
     """
     if manager is not None:
         model = manager.model
@@ -65,18 +65,22 @@ def send(
 
 
 def send_create(objects: Sequence[Model], **kwargs: Any) -> int:
+    "Alias for ``send(objects, msg_type=TYPE_DELETE, ...)``."
     return send(objects, msg_type=TYPE_CREATE, **kwargs)
 
 
 def send_update(objects: Sequence[Model], **kwargs: Any) -> int:
+    "Alias for ``send(objects, msg_type=TYPE_UPDATE, ...)``."
     return send(objects, msg_type=TYPE_UPDATE, **kwargs)
 
 
 def send_delete(objects: Sequence[Model], **kwargs: Any) -> int:
+    "Alias for ``send(objects, msg_type=TYPE_DELETE, ...)``."
     return send(objects, msg_type=TYPE_DELETE, **kwargs)
 
 
 def send_refresh(objects: Sequence[Model], **kwargs: Any) -> int:
+    "Alias for ``send(objects, msg_type=TYPE_REFRESH, ...)``."
     return send(objects, msg_type=TYPE_REFRESH, **kwargs)
 
 
@@ -87,7 +91,8 @@ def full_refresh(
 ) -> int:
     """
     Does full refresh for model or manager. Sends refresh message for each
-    object, then sends enumerate message with objects IDs
+    object, then sends enumerate message with objects IDs or EOS (end of
+    stream).
     """
 
     def _refresh(

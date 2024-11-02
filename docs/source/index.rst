@@ -39,9 +39,12 @@ To force stream all data in all registered models type::
 
     python manage.py kafkastreamer_refresh
 
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
+Table of Contents
+=================
 
-    configuring
-    streamer
+.. toctree::
+   :maxdepth: 2
+
+   configuring
+   streamers
+   API </apidoc/index>
