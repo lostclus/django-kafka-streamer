@@ -12,7 +12,7 @@ from .squashing import squash
 def admin_site(source: str) -> Callable[[type[AdminSite]], type[AdminSite]]:
     """
     Decorator function for model admin site class to set streamer context
-    and squashing
+    and squashing.
     """
 
     def patch_admin_site(admin_site: type[AdminSite]) -> type[AdminSite]:

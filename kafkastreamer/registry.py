@@ -162,14 +162,14 @@ def register(
 
 def get_streamer(model: type[Model]) -> Streamer | None:
     """
-    Returns streamer instance for given Django model or None
+    Returns streamer instance for given Django model or ``None``.
     """
     return _registry.get(_make_registry_key(model))
 
 
 def get_registry() -> list[tuple[type[Model], Streamer]]:
     """
-    Returns (model, streamer) tuples for all registered streamer and models
+    Returns (model, streamer) tuples for all registered streamer and models.
     """
     result = []
     for key, streamer in _registry.items():
@@ -182,6 +182,10 @@ def get_registry() -> list[tuple[type[Model], Streamer]]:
 def get_streamer_for_related(
     model: type[Model],
 ) -> Generator[tuple[str, Streamer], None]:
+    """
+    Returns a generator of (field, streamer) tuples for all related fields in
+    specified model.
+    """
     for_key = _make_registry_key(model)
 
     for key, streamer in _registry.items():

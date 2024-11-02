@@ -15,7 +15,7 @@ def set_context(
     source: str | None = None,
 ) -> Generator[None, None]:
     """
-    Context manager to setting message streamer context variables
+    Context manager to setting message streamer context variables.
     """
     _context.user = user
     _context.source = source
@@ -27,7 +27,7 @@ def set_context(
 @contextmanager
 def stop_handlers(*models: type[Model]) -> Generator[None, None]:
     """
-    Context manager to stop handlers for particular or all models
+    Context manager to stop handlers for particular or all models.
     """
     _context.stop_handlers = set(models)
     yield
@@ -35,6 +35,9 @@ def stop_handlers(*models: type[Model]) -> Generator[None, None]:
 
 
 def is_model_handler_stopped(model: type[Model]) -> bool:
+    """
+    Returns ``True`` if model handler is stoped.
+    """
     models = getattr(_context, "stop_handlers", None)
     if models is None:
         return False

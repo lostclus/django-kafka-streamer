@@ -4,34 +4,64 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, NamedTuple, TypeAlias
 
 ObjectID: TypeAlias = int | str
+"Type alias for object ID."
 
 
 class MessageContext(NamedTuple):
-    source: str  # source of data modification as string
-    user_id: ObjectID  # author of data modification as user ID
-    extra: dict[str, Any] | None  # extra context data as dict
+    "Message context."
+
+    source: str
+    "Source of data modification as string."
+
+    user_id: ObjectID
+    "Author of data modification as user ID."
+
+    extra: dict[str, Any] | None
+    "Extra context data as dict."
 
 
 class MessageMeta(NamedTuple):
-    timestamp: datetime  # message time as datetime object
-    msg_type: str  # message type as string
-    context: MessageContext  # MessageContext
+    "Message meta data."
+
+    timestamp: datetime
+    "Message time as datetime object."
+
+    msg_type: str
+    "Message type as string."
+
+    context: MessageContext
+    "Message context."
 
 
 class Message(NamedTuple):
-    meta: MessageMeta  # MessageMeta
-    obj_id: ObjectID | None  # object ID (primary key)
-    data: dict[str, Any]  # message data as dict
+    "Represents message."
+
+    meta: MessageMeta
+    "Meta data."
+
+    obj_id: ObjectID | None
+    "Object ID (primary key)."
+
+    data: dict[str, Any]
+    "Message data as dict."
 
 
 MessageSerializer: TypeAlias = Callable[..., bytes]
+"Type alias for message serializer function."
+
 PartitionKeySerializer: TypeAlias = Callable[..., bytes]
+"Type alias for partition key serializer function."
+
 Partitioner: TypeAlias = Callable[[bytes, list[int], list[int]], int]
+"Type alias for partitioner function."
 
 
 class RefreshFinalizeType(str, Enum):
-    ENUMERATE = "enumerate"  # Send enumerate IDs message
-    EOS = "eos"  # Send end of stream message
+    ENUMERATE = "enumerate"
+    "Send enumerate IDs message."
+
+    EOS = "eos"
+    "Send end of stream message."
 
 
 if TYPE_CHECKING:

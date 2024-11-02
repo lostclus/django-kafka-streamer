@@ -83,65 +83,65 @@ class Batch:
 
 class Streamer:
     """
-    This class encapsulates all streaming logic for particular Django model
-    class
+    This class encapsulates all streaming logic related to particular Django
+    model class
     """
 
     topic: str | None = None
-    "Kafka topic for this class of objects"
+    "Kafka topic for this class of objects."
 
     exclude: Sequence[str] | None = None
-    "Data fields to exclude"
+    "Data fields to exclude."
 
     include: Sequence[str] | None = None
-    "List of extra (related, computed) fields to include"
+    "List of extra (related, computed) fields to include."
 
     static_fields: dict[str, Any] | None = None
-    "Static data to include in every message"
+    "Static data to include in every message."
 
     select_related: Sequence[str] | None = None
-    "List of related fields to select in queryset"
+    "List of related fields to select in queryset."
 
     prefetch_related: Sequence[str] | None = None
-    "List of related fields to prefetch in queryset"
+    "List of related fields to prefetch in queryset."
 
     handle_related: Sequence[str] | None = None
-    "List of related fields to handle changes"
+    "List of related fields to handle changes."
 
     batch_class: type[Batch] = Batch
-    "Batch class"
+    "Batch class."
 
     refresh_finalize_type: RefreshFinalizeType = RefreshFinalizeType.ENUMERATE
-    "Which message type to use at end when do full refresh (enumerate or EOS)"
+    "Which message type to use at end when do full refresh (enumerate or EOS)."
 
     batch_size: int | None = None
-    "Number of records in batch"
+    "Number of records in batch."
 
     message_serializer: MessageSerializer | None = None
     "Serialize function to serialize message. \
-        See `KafkaProducer documentation`_ for details"
+        See `KafkaProducer documentation`_ for details."
 
     partition_key_serializer: PartitionKeySerializer | None = None
-    "Partition key serializer function. See `KafkaProducer documentation`_ for details"
+    "Partition key serializer function. See `KafkaProducer documentation`_ for details."
 
     partitioner: Partitioner | None = None
-    "Partitioner function. See `KafkaProducer documentation`_ for details"
+    "Partitioner function. See `KafkaProducer documentation`_ for details."
 
     id_field: str = "id"
-    "Field name of object ID"
+    "Field name of object ID."
 
     enumerate_ids_field: str = "ids"
-    "Field name for list of object IDs in enumerate message"
+    "Field name for list of object IDs in enumerate message."
 
     enumerate_chunk_field: str = "chunk"
-    "Field name for chunk in enumerate message"
+    "Field name for chunk in enumerate message."
 
     enumerate_chunk_size: int = 5000
-    "Chunk size in enumerate message"
+    "Chunk size in enumerate message."
 
     def __init__(self, **kwargs: Any):
         """
-        Streamer constructor
+        Streamer constructor.
         """
         for key, value in kwargs.items():
             if value is not None:
