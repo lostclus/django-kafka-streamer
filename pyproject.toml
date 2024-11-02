@@ -39,6 +39,7 @@ dependencies = [
 
 [project.urls]
 Repository = "http://github.com/lostclus/django-kafka-streamer"
+Documentation = "http://django-kafka-streamer.readthedocs.io/"
 
 [project.optional-dependencies]
 tests = [

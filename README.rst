@@ -8,6 +8,10 @@ django-kafka-streamer
     :target: https://pypi.org/project/django-kafka-streamer/
     :alt: Current version on PyPi
 
+.. image:: https://readthedocs.org/projects/django-kafka-streamer/badge/?version=latest
+    :target: http://django-kafka-streamer.readthedocs.io/
+    :alt: Documentation
+
 .. image:: https://img.shields.io/pypi/pyversions/django-kafka-streamer
     :alt: PyPI - Python Version
 
@@ -32,6 +36,7 @@ Links:
 
 * GitHub: https://github.com/lostclus/django-kafka-streamer/
 * PyPI: https://pypi.org/project/django-kafka-streamer/
+* Documentation: http://django-kafka-streamer.readthedocs.io/
 * Consumer library: https://github.com/lostclus/aiosafeconsumer
 * Example application: https://github.com/lostclus/WeatherApp
 
