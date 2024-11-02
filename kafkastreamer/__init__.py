@@ -23,7 +23,7 @@ from .squashing import squash
 from .stream import Batch, Streamer
 from .types import RefreshFinalizeType
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 __all__ = [
     "admin_site",
