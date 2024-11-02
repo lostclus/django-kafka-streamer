@@ -26,7 +26,7 @@ def send(
     flush: bool = True,
 ) -> int:
     """
-    Sends objects to associated streamer.
+    Sends objects to the associated streamer.
     """
     if manager is not None:
         model = manager.model

@@ -15,7 +15,7 @@ def set_context(
     source: str | None = None,
 ) -> Generator[None, None]:
     """
-    Context manager to setting message streamer context variables.
+    Context manager to set message streamer context variables.
     """
     _context.user = user
     _context.source = source

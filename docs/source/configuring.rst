@@ -3,7 +3,7 @@
 Configuring Django settings
 ===========================
 
-Ensure that ``kafkastreamer`` present in the ``INSTALLED_APPS`` list in the
+Ensure that ``kafkastreamer`` is present in the ``INSTALLED_APPS`` list in the
 project `settings.py`::
 
     INSTALLED_APPS = [

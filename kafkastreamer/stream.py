@@ -83,12 +83,12 @@ class Batch:
 
 class Streamer:
     """
-    This class encapsulates all streaming logic related to particular Django
+    This class encapsulates all streaming logic related to a particular Django
     model class
     """
 
     topic: str | None = None
-    "Kafka topic for this class of objects."
+    "Kafka topic to stream data."
 
     exclude: Sequence[str] | None = None
     "Data fields to exclude."
@@ -112,13 +112,14 @@ class Streamer:
     "Batch class."
 
     refresh_finalize_type: RefreshFinalizeType = RefreshFinalizeType.ENUMERATE
-    "Which message type to use at end when do full refresh (enumerate or EOS)."
+    "Which message type to use at the end when doing a full refresh \
+        (enumerate or EOS)."
 
     batch_size: int | None = None
     "Number of records in batch."
 
     message_serializer: MessageSerializer | None = None
-    "Serialize function to serialize message. \
+    "Serializer function for message serialization. \
         See `KafkaProducer documentation`_ for details."
 
     partition_key_serializer: PartitionKeySerializer | None = None
